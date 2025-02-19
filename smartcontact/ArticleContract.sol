@@ -14,7 +14,7 @@ contract ArticleContract {
 
     Article private art;
 
-    function pub(bytes[] memory _content, string memory _title, string memory _algo) public {
+    function pub(string memory _title,  bytes[] memory _content,  string memory _algo) public {
         Article storage a = art;
         a.ct = Type.Article;
         a.content = _content;
