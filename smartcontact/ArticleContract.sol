@@ -6,11 +6,10 @@ contract ArticleContract {
 
     struct Article {
         Type ct;
-        bytes[] content;
-        bytes32 revTx;
         string title;
-        address author;
+        bytes32 revTx;
         string algo;
+        bytes[] content;
     }
 
     Article private art;
@@ -20,13 +19,11 @@ contract ArticleContract {
         a.ct = Type.Article;
         a.content = _content;
         a.title = _title;
-        a.author = msg.sender;
         a.algo = _algo;
     }
 
     function revise(bytes32 _revTx, bytes[] memory _content, string memory _algo) public {
         Article storage a = art;
-        require(msg.sender == a.author, "Only the author can revise");
         a.ct = Type.Revision;
         a.revTx = _revTx;
         a.content = _content;
@@ -51,9 +48,5 @@ contract ArticleContract {
 
     function getTitle() public view returns (string memory) {
         return art.title;
-    }
-
-    function getAuthor() public view returns (address) {
-        return art.author;
     }
 }
