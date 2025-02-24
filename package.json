@@ -1,0 +1,19 @@
+{
+  "name": "d-blog-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for the d-blog platform",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run scripts/deploy.js --network sepolia"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.6"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "chai": "^4.3.4",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.4.0",
+    "hardhat": "^2.22.18"
+  }
+}

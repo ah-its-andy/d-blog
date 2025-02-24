@@ -68,7 +68,7 @@ def deploy_contract(contract, rpc_url, private_key):
     Contract = w3.eth.contract(abi=abi, bytecode=bytecode)
     transaction = Contract.constructor().build_transaction({
         'from': account.address,
-        'nonce': w3.eth.get_transaction_count(account.address),
+        'nonce': w3.eth.get_transaction_count(account.address) + 1,
         'gas': 2000000,
         'gasPrice': w3.to_wei('50', 'gwei')
     })

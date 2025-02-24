@@ -7,41 +7,78 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <script>
-        // 现在你可以在这里使用 ethers 对象
-        console.log(ethers);  // 检查 ethers 是否成功加载
+        // Now you can use the ethers object here
+        console.log(ethers);  // Check if ethers is successfully loaded
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        let i18n = {};
+
+        async function loadI18n() {
+            const response = await fetch('/path/to/i18n.json');
+            i18n = await response.json();
+            applyTranslations();
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.innerText = i18n[key] || el.innerText;
+            });
+        }
+
+        window.onload = function(){
+            loadBrotli().then(b => {
+                brotli = b;
+            });
+            loadI18n();
+        };
+    </script>
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <div class="container mx-auto p-4">
-        <button onclick="connectWallet()" class="bg-blue-500 text-white px-4 py-2 rounded">连接钱包</button>
-        <input id="articleTitle" placeholder="输入文章标题" class="w-full p-2 mt-4 border rounded">
-        <input id="articleSummary" placeholder="输入文章摘要" class="w-full p-2 mt-4 border rounded">
-        <textarea id="articleContent" placeholder="输入文章内容" class="w-full p-2 mt-4 border rounded"></textarea>
-        <select id="compressionSelect" class="p-2 border rounded mt-2">
-            <!-- <option value="none">无压缩</option> -->
-            <option value="brotli">Brotli</option>
-            <!-- 可以在这里添加更多的压缩算法选项 -->
-        </select>
-        <button onclick="compressAndPost()" class="bg-green-500 text-white px-4 py-2 rounded mt-2">发布文章</button>
-        <div id="articleList" class="mt-4"></div>
-        <div id="articleContentDisplay" class="mt-4 p-4 bg-white rounded shadow"></div>
-        <div class="mt-4">
-            <select id="functionSelect" onchange="generateABI()" class="p-2 border rounded">
-                <option value="postArticle">postArticle</option>
-                <option value="getArticle">getArticle</option>
-                <option value="getArticleList">getArticleList</option>
-            </select>
-            <textarea id="abiDisplay" readonly class="w-full p-2 mt-2 border rounded"></textarea>
-            <button onclick="executeFunction()" class="bg-purple-500 text-white px-4 py-2 rounded mt-2">执行函数</button>
+<body class="bg-light text-dark">
+    <div class="container p-4">
+        <div id="walletConnect" class="text-center w-100">
+            <button onclick="connectWallet()" class="btn btn-primary" data-i18n="connect_wallet">Connect Wallet</button>
+        </div>
+        <div id="mainContent" style="display:none;" class="d-flex">
+            <div class="col-md-3" style="display: inline-block;">
+                <div class="menu">
+                    <ul class="nav nav-pills nav-stacked">
+                        <li role="presentation"><a href="#" onclick="showTab('postTab')" data-i18n="post_article">Post Article</a></li>
+                        <li role="presentation"><a href="#" onclick="showTab('listTab')" data-i18n="article_list">Article List</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6" style="display: inline-block;">
+                <div id="postTab" class="tab-content">
+                    <input id="articleTitle" placeholder="Enter article title" class="form-control mt-4" data-i18n="input_title">
+                    <input id="articleSummary" placeholder="Enter article summary" class="form-control mt-4" data-i18n="input_summary">
+                    <textarea id="articleContent" placeholder="Enter article content" class="form-control mt-4" data-i18n="input_content"></textarea>
+                    <select id="compressionSelect" class="form-control mt-2">
+                        <option value="brotli" data-i18n="brotli">Brotli</option>
+                    </select>
+                    <button onclick="compressAndPost()" class="btn btn-success mt-2" data-i18n="post_article_button">Post Article</button>
+                </div>
+                <div id="listTab" class="tab-content" style="display:none;">
+                    <div id="operationsBlock" class="mt-4">
+                        <button onclick="refreshArticleList()" class="btn btn-primary" data-i18n="refresh_list">Refresh List</button>
+                    </div>
+                    <div id="listBlock" class="mt-4">
+                        <ul id="articleList" class="list-group">
+                            <!-- List items will be rendered here -->
+                        </ul>
+                    </div>
+                    <div id="articleContentDisplay" class="mt-4 p-4 bg-white rounded shadow"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const contractAddress = "0xddACECd9301e33710d05ea7dD62bf415aE3A661e";
         const abi = [
-        // 填写合约的 ABI
+        // Fill in the contract's ABI
         "function postArticle(string memory title, string memory summary, bytes memory compressedContent) public",
         "function getArticle(uint256 id) public view returns (string memory title, string memory summary, bytes memory compressedContent)",
         "function getArticleList() public view returns (uint256[] memory ids, string[] memory titles, string[] memory summaries, address[] memory authors, uint256[] memory timestamps)"
@@ -53,16 +90,17 @@
                 const provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
                 window.contract = new ethers.Contract(contractAddress, abi, provider.getSigner());
-                alert("钱包连接成功");
-                loadArticles();  // 连接钱包后加载文章列表
+                alert("Wallet connected successfully");
+                document.getElementById('walletConnect').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
             } else {
-                alert("请安装 MetaMask");
+                alert("Please install MetaMask");
             }
         }
 
         async function compressAndPost() {
             if (!window.contract) {
-                alert("请先连接钱包");
+                alert("Please connect wallet first");
                 return;
             }
             const title = document.getElementById("articleTitle").value;
@@ -72,32 +110,14 @@
             let encoded;
 
             if (compressionMethod === "brotli") {
-                const compressed = brotli.compress(new TextEncoder().encode(content));  // Brotli 压缩
-                encoded = new Uint8Array(compressed);  // 转换为 bytes 数组
+                const compressed = brotli.compress(new TextEncoder().encode(content));  // Brotli compression
+                encoded = new Uint8Array(compressed);  // Convert to bytes array
             } else {
-                encoded = new TextEncoder().encode(content);  // 无压缩，直接转换为 bytes 数组
+                encoded = new TextEncoder().encode(content);  // No compression, directly convert to bytes array
             }
 
             await window.contract.postArticle(title, summary, encoded);
-            alert("文章已发布");
-        }
-
-        async function loadArticles() {
-            if (!window.contract) {
-                alert("请先连接钱包");
-                return;
-            }
-            const articles = await window.contract.getArticleList();
-            console.log(articles)
-            let html = "";
-            for (let i = 0; i < articles[0].length; i++) {
-                html += `<div>
-                    <h3>${articles[1][i]}</h3>
-                    <p>${articles[2][i]}</p>
-                    <button onclick="viewArticle(${articles[0][i]})">查看</button>
-                </div>`;
-            }
-            document.getElementById("articleList").innerHTML = html;
+            alert("Article posted");
         }
 
         async function loadBrotli() {
@@ -107,7 +127,7 @@
 
         async function viewArticle(id) {
             if (!window.contract) {
-                alert("请先连接钱包");
+                alert("Please connect wallet first");
                 return;
             }
             const [, , compressedBytesHex] = await window.contract.getArticle(id);
@@ -118,13 +138,13 @@
             let content;
 
             try {
-                content = brotli.decompress(compressedBytes);  // 尝试解压
-                content = new TextDecoder().decode(content);  // 解码解压后的内容
+                content = brotli.decompress(compressedBytes);  // Try to decompress
+                content = new TextDecoder().decode(content);  // Decode decompressed content
             } catch (e) {
                 if (e instanceof RangeError) {
-                    content = new TextDecoder().decode(compressedBytes);  // 如果解压失败，尝试直接解码
+                    content = new TextDecoder().decode(compressedBytes);  // If decompression fails, try to decode directly
                 } else {
-                    throw e;  // 其他错误抛出
+                    throw e;  // Throw other errors
                 }
             }
 
@@ -139,7 +159,7 @@
 
         async function executeFunction() {
             if (!window.contract) {
-                alert("请先连接钱包");
+                alert("Please connect wallet first");
                 return;
             }
             const functionName = document.getElementById("functionSelect").value;
@@ -150,22 +170,63 @@
                 const content = document.getElementById("articleContent").value;
                 const compressed = pako.deflate(content);
                 const encoded = new Uint8Array(compressed);
-                await contractWithCustomABI.postArticle("标题", "摘要", encoded);
-                alert("文章已发布");
+                await contractWithCustomABI.postArticle("Title", "Summary", encoded);
+                alert("Article posted");
             } else if (functionName === "getArticle") {
-                const id = prompt("请输入文章ID:");
+                const id = prompt("Enter article ID:");
                 const article = await contractWithCustomABI.getArticle(id);
-                alert(`标题: ${article[0]}, 摘要: ${article[1]}`);
+                alert(`Title: ${article[0]}, Summary: ${article[1]}`);
             } else if (functionName === "getArticleList") {
                 const articles = await contractWithCustomABI.getArticleList();
-                alert(`文章列表: ${JSON.stringify(articles)}`);
+                alert(`Article list: ${JSON.stringify(articles)}`);
             }
+        }
+
+        async function refreshArticleList() {
+            if (!window.contract) {
+                alert("Please connect wallet first");
+                return;
+            }
+            const articleCount = await window.contract.getArticleCount();
+            const articles = [];
+            for (let i = 0; i < articleCount; i++) {
+                const article = await window.contract.getArticle(i);
+                articles.push(article);
+            }
+            localStorage.setItem('articles', JSON.stringify(articles));
+            renderArticleList();
+        }
+
+        function renderArticleList() {
+            const articles = JSON.parse(localStorage.getItem('articles')) || [];
+            const articleList = document.getElementById("articleList");
+            articleList.innerHTML = "";
+            articles.forEach((article, index) => {
+                const listItem = document.createElement("li");
+                listItem.className = "list-group-item";
+                listItem.innerHTML = `
+                    <div>
+                        <h4>${article[0]}</h4>
+                        <p>${article[1]}</p>
+                        <button onclick="viewArticle(${index})" class="btn btn-info">View</button>
+                    </div>
+                `;
+                articleList.appendChild(listItem);
+            });
+        }
+
+        function showTab(tabId) {
+            document.getElementById('postTab').style.display = 'none';
+            document.getElementById('listTab').style.display = 'none';
+            document.getElementById(tabId).style.display = 'block';
         }
 
         window.onload = function(){
             loadBrotli().then(b => {
                 brotli = b;
             });
+            loadI18n();
+            renderArticleList();  // Render list from cache on load
         };
     </script>
 </body>
