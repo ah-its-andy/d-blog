@@ -1,0 +1,4 @@
+py-solc-x
+web3
+urllib3==1.26.6
+chardet==3.0.4

@@ -3,23 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Article Publisher</title>
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-    <script src="app.js" defer></script>
+    <title>Decentralized Blog</title>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script>
+        // 现在你可以在这里使用 ethers 对象
+        console.log(ethers);  // 检查 ethers 是否成功加载
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <h1>Publish Article</h1>
-    <form id="publishForm">
-        <label for="contractAddress">Contract Address:</label>
-        <input type="text" id="contractAddress" name="contractAddress" required><br><br>
-        <label for="title">Title:</label>
-        <input type="text" id="title" name="title" required><br><br>
-        <label for="content">Content:</label>
-        <textarea id="content" name="content" required></textarea><br><br>
-        <label for="algo">Algorithm:</label>
-        <input type="text" id="algo" name="algo" required><br><br>
-        <button type="submit">Publish</button>
-    </form>
-    <div id="result"></div>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <button onclick="connectWallet()" class="bg-blue-500 text-white px-4 py-2 rounded">连接钱包</button>
+        <input id="articleTitle" placeholder="输入文章标题" class="w-full p-2 mt-4 border rounded">
+        <input id="articleSummary" placeholder="输入文章摘要" class="w-full p-2 mt-4 border rounded">
+        <textarea id="articleContent" placeholder="输入文章内容" class="w-full p-2 mt-4 border rounded"></textarea>
+        <select id="compressionSelect" class="p-2 border rounded mt-2">
+            <!-- <option value="none">无压缩</option> -->
+            <option value="brotli">Brotli</option>
+            <!-- 可以在这里添加更多的压缩算法选项 -->
+        </select>
+        <button onclick="compressAndPost()" class="bg-green-500 text-white px-4 py-2 rounded mt-2">发布文章</button>
+        <div id="articleList" class="mt-4"></div>
+        <div id="articleContentDisplay" class="mt-4 p-4 bg-white rounded shadow"></div>
+        <div class="mt-4">
+            <select id="functionSelect" onchange="generateABI()" class="p-2 border rounded">
+                <option value="postArticle">postArticle</option>
+                <option value="getArticle">getArticle</option>
+                <option value="getArticleList">getArticleList</option>
+            </select>
+            <textarea id="abiDisplay" readonly class="w-full p-2 mt-2 border rounded"></textarea>
+            <button onclick="executeFunction()" class="bg-purple-500 text-white px-4 py-2 rounded mt-2">执行函数</button>
+        </div>
+    </div>
+
+    <script>
+        const contractAddress = "0xddACECd9301e33710d05ea7dD62bf415aE3A661e";
+        const abi = [
+        // 填写合约的 ABI
+        "function postArticle(string memory title, string memory summary, bytes memory compressedContent) public",
+        "function getArticle(uint256 id) public view returns (string memory title, string memory summary, bytes memory compressedContent)",
+        "function getArticleList() public view returns (uint256[] memory ids, string[] memory titles, string[] memory summaries, address[] memory authors, uint256[] memory timestamps)"
+        ];
+        let brotli;
+
+        async function connectWallet() {
+            if (typeof window.ethereum !== 'undefined') {
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                window.contract = new ethers.Contract(contractAddress, abi, provider.getSigner());
+                alert("钱包连接成功");
+                loadArticles();  // 连接钱包后加载文章列表
+            } else {
+                alert("请安装 MetaMask");
+            }
+        }
+
+        async function compressAndPost() {
+            if (!window.contract) {
+                alert("请先连接钱包");
+                return;
+            }
+            const title = document.getElementById("articleTitle").value;
+            const summary = document.getElementById("articleSummary").value;
+            const content = document.getElementById("articleContent").value;
+            const compressionMethod = document.getElementById("compressionSelect").value;
+            let encoded;
+
+            if (compressionMethod === "brotli") {
+                const compressed = brotli.compress(new TextEncoder().encode(content));  // Brotli 压缩
+                encoded = new Uint8Array(compressed);  // 转换为 bytes 数组
+            } else {
+                encoded = new TextEncoder().encode(content);  // 无压缩，直接转换为 bytes 数组
+            }
+
+            await window.contract.postArticle(title, summary, encoded);
+            alert("文章已发布");
+        }
+
+        async function loadArticles() {
+            if (!window.contract) {
+                alert("请先连接钱包");
+                return;
+            }
+            const articles = await window.contract.getArticleList();
+            console.log(articles)
+            let html = "";
+            for (let i = 0; i < articles[0].length; i++) {
+                html += `<div>
+                    <h3>${articles[1][i]}</h3>
+                    <p>${articles[2][i]}</p>
+                    <button onclick="viewArticle(${articles[0][i]})">查看</button>
+                </div>`;
+            }
+            document.getElementById("articleList").innerHTML = html;
+        }
+
+        async function loadBrotli() {
+            const b = await import("https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module").then(m => m.default);
+            return b;
+        }
+
+        async function viewArticle(id) {
+            if (!window.contract) {
+                alert("请先连接钱包");
+                return;
+            }
+            const [, , compressedBytesHex] = await window.contract.getArticle(id);
+            console.log(compressedBytesHex);
+
+            // Convert hex string to Uint8Array
+            const compressedBytes = ethers.utils.arrayify(compressedBytesHex);
+            let content;
+
+            try {
+                content = brotli.decompress(compressedBytes);  // 尝试解压
+                content = new TextDecoder().decode(content);  // 解码解压后的内容
+            } catch (e) {
+                if (e instanceof RangeError) {
+                    content = new TextDecoder().decode(compressedBytes);  // 如果解压失败，尝试直接解码
+                } else {
+                    throw e;  // 其他错误抛出
+                }
+            }
+
+            document.getElementById("articleContentDisplay").innerText = content;
+        }
+
+        function generateABI() {
+            const functionName = document.getElementById("functionSelect").value;
+            const functionABI = abi.find(item => item.name === functionName);
+            document.getElementById("abiDisplay").value = JSON.stringify(functionABI, null, 2);
+        }
+
+        async function executeFunction() {
+            if (!window.contract) {
+                alert("请先连接钱包");
+                return;
+            }
+            const functionName = document.getElementById("functionSelect").value;
+            const functionABI = JSON.parse(document.getElementById("abiDisplay").value);
+            const contractWithCustomABI = new ethers.Contract(contractAddress, [functionABI], window.contract.signer);
+
+            if (functionName === "postArticle") {
+                const content = document.getElementById("articleContent").value;
+                const compressed = pako.deflate(content);
+                const encoded = new Uint8Array(compressed);
+                await contractWithCustomABI.postArticle("标题", "摘要", encoded);
+                alert("文章已发布");
+            } else if (functionName === "getArticle") {
+                const id = prompt("请输入文章ID:");
+                const article = await contractWithCustomABI.getArticle(id);
+                alert(`标题: ${article[0]}, 摘要: ${article[1]}`);
+            } else if (functionName === "getArticleList") {
+                const articles = await contractWithCustomABI.getArticleList();
+                alert(`文章列表: ${JSON.stringify(articles)}`);
+            }
+        }
+
+        window.onload = function(){
+            loadBrotli().then(b => {
+                brotli = b;
+            });
+        };
+    </script>
 </body>
 </html>
